@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Categories - AMAZONAS STORAGE</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        summary { cursor: pointer; font-weight: bold; font-size: 1.1rem; padding: 8px 0; user-select: none; }
+        summary:hover { color: #007bff; }
+        .mode-badge { padding: 5px 12px; border-radius: 20px; font-weight: bold; font-size: 0.85rem; text-decoration: none; }
+        .mode-inventory { background: #28a745; color: white; }
+        .mode-edit { background: #ffc107; color: #212529; }
+        .cat-tree-box { border: 1px solid #e0e0e0; border-radius: 6px; padding: 10px; margin-bottom: 12px; background: #fff; }
+        .sub-cat-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; background: #f8f9fa; border-radius: 4px; border: 1px solid #e9ecef; margin-bottom: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="header-title"><h1>⚡ AMAZONAS STORAGE</h1></div>
+            <div class="header-right">
+                <a href="/toggle-mode" class="mode-badge mode-{{ mode }}">
+                    {% if mode == 'edit' %}✏️ EDIT MODE{% else %}🔍 INVENTORY MODE{% endif %}
+                </a>
+                <a href="/" class="btn btn-outline">Items List</a>
+                <a href="/containers" class="btn btn-outline">Containers Tree</a>
+                <a href="/categories" class="btn btn-primary">Categories</a>
+            </div>
+        </header>
+
+        {% for msg in get_flashed_messages(request) %}
+        <div class="alert alert-{{ msg.category }}">{{ msg.message }}</div>
+        {% endfor %}
+
+        <div class="main-layout">
+            <main class="content-area">
+                <div class="card">
+                    <h2 class="card-title">CATEGORY HIERARCHY (CLICK TO EXPAND / COLLAPSE)</h2>
+                    
+                    {% if category_tree %}
+                        {% for main in category_tree %}
+                        <details open class="cat-tree-box">
+                            <summary>
+                                📁 <strong>{{ main.name }}</strong>
+                                <span class="badge badge-secondary">{{ main.subs|length }} subcategories</span>
+                            </summary>
+
+                            <div class="subcategories-tree mt-2" style="padding-left: 20px;">
+                                {% if main.subs %}
+                                    {% for sub in main.subs %}
+                                    <div class="sub-cat-row">
+                                        <span>↳ <strong>{{ sub.name }}</strong></span>
+                                        <div>
+                                            <span class="badge badge-qty">{{ sub.item_count }} items</span>
+                                            {% if mode == 'edit' %}
+                                                {% if sub.item_count == 0 %}
+                                                <form method="POST" action="/delete-category/{{ sub.id }}" class="inline-form" onsubmit="return confirm('Delete category {{ sub.name }}?');">
+                                                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                                                </form>
+                                                {% endif %}
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <p class="text-muted" style="margin-left: 10px; font-size: 0.9rem;">No subcategories under this parent.</p>
+                                {% endif %}
+                            </div>
+                        </details>
+                        {% endfor %}
+                    {% else %}
+                        <p class="no-data">No categories created yet.</p>
+                    {% endif %}
+                </div>
+            </main>
+
+            <!-- Sidebar KIZÁRÓLAG Edit módban -->
+            {% if mode == 'edit' %}
+            <aside class="sidebar">
+                <div class="card">
+                    <h3 class="card-title">+ NEW CATEGORY</h3>
+                    <form method="POST" action="/add-category">
+                        <div class="form-group">
+                            <label>CATEGORY NAME *</label>
+                            <input type="text" name="name" class="form-control" placeholder="e.g. Semiconductors or Fasteners" required>
+                        </div>
+                        <div class="form-group">
+                            <label>PARENT CATEGORY</label>
+                            <select name="parent_id" class="form-control">
+                                <option value="">-- None (Create Main Category) --</option>
+                                {% for main in mains %}
+                                <option value="{{ main.id }}">{{ main.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted">Leave empty to create a new top-level Main Category.</small>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block">CREATE CATEGORY</button>
+                    </form>
+                </div>
+            </aside>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

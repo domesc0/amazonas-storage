@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AMAZONAS STORAGE SYSTEM</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .item-thumb-1to1 {
+            width: 70px;
+            height: 70px;
+            aspect-ratio: 1 / 1;
+            object-fit: cover;
+            border-radius: 6px;
+            background: #eee;
+            border: 1px solid #ccc;
+            flex-shrink: 0;
+        }
+        .item-flex-wrapper {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+        .mode-badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.85rem;
+            text-decoration: none;
+        }
+        .mode-inventory { background: #28a745; color: white; }
+        .mode-edit { background: #ffc107; color: #212529; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="header-title">
+                <h1>⚡ AMAZONAS STORAGE</h1>
+            </div>
+            <div class="header-right">
+                <!-- Mode Toggle Button -->
+                <a href="/toggle-mode" class="mode-badge mode-{{ mode }}" title="Click to switch mode">
+                    {% if mode == 'edit' %}✏️ EDIT MODE{% else %}🔍 INVENTORY MODE{% endif %}
+                </a>
+
+                <a href="/containers" class="btn btn-outline">Tree View</a>
+                <a href="/categories" class="btn btn-outline">Categories</a>
+                {% if mode == 'edit' %}
+                <a href="/backup" class="btn btn-outline">💾 Backup</a>
+                {% endif %}
+                <div class="stats-badge">ITEMS: {{ total_items }} | CONTAINERS: {{ total_containers }}</div>
+            </div>
+        </header>
+
+        {% for msg in get_flashed_messages(request) %}
+        <div class="alert alert-{{ msg.category }}">{{ msg.message }}</div>
+        {% endfor %}
+
+        <!-- Search Bar -->
+        <form method="GET" action="/" class="search-form">
+            <input type="text" name="q" value="{{ search_query }}" placeholder="🔍 SEARCH (name, category, container...)" class="search-input" autofocus>
+        </form>
+
+        <div class="main-layout">
+            <!-- Main Content Area -->
+            <main class="content-area">
+                <div class="card">
+                    <h2 class="card-title">
+                        {% if search_query %}SEARCH RESULTS ({{ total_found }})
+                        {% elif mode == 'edit' %}RECENT ITEMS (3 PER PAGE)
+                        {% else %}ITEMS INVENTORY (20 PER PAGE)
+                        {% endif %}
+                    </h2>
+                    
+                    {% if items %}
+                    <div class="items-grid">
+                        {% for item in items %}
+                        <div class="item-card">
+                            <div class="item-flex-wrapper">
+                                <!-- 1:1 Image Thumbnail -->
+                                {% if item.image_url %}
+                                <img src="{{ item.image_url }}" alt="{{ item.name }}" class="item-thumb-1to1">
+                                {% else %}
+                                <div class="item-thumb-1to1 d-flex align-items-center justify-content-center" style="display:flex; align-items:center; justify-content:center; font-size:1.5rem; color:#aaa;">📦</div>
+                                {% endif %}
+
+                                <div style="flex-grow: 1;">
+                                    <div class="item-row-top">
+                                        <span class="item-name"><strong>{{ item.name }}</strong></span>
+                                        <span class="badge badge-qty">x{{ item.quantity }}</span>
+                                        <span class="badge badge-container">{{ item.container_id }}</span>
+                                    </div>
+                                    
+                                    {% if item.parent_category_name or item.category_name %}
+                                    <div class="item-category mb-1 mt-1">
+                                        <span class="badge badge-secondary">
+                                            📁 {{ item.parent_category_name or '' }} {% if item.parent_category_name and item.category_name %} / {% endif %} {{ item.category_name or '' }}
+                                        </span>
+                                    </div>
+                                    {% endif %}
+
+                                    {% if item.description %}
+                                    <div class="item-description mb-2">{{ item.description }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Actions ONLY IN EDIT MODE -->
+                            {% if mode == 'edit' %}
+                            <div class="item-actions mt-2">
+                                <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('edit-form-{{ item.id }}').classList.toggle('hidden')">
+                                    ✏️ Edit / Move
+                                </button>
+                                <form method="POST" action="/delete-item/{{ item.id }}" class="inline-form" onsubmit="return confirm('Delete this item?');">
+                                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                                </form>
+                            </div>
+
+                            <!-- HIDDEN EDIT FORM -->
+                            <div id="edit-form-{{ item.id }}" class="edit-box hidden mt-3 p-3" style="background: rgba(0,0,0,0.03); border-radius: 6px; border: 1px dashed #ccc;">
+                                <h4>Edit Item #{{ item.id }}</h4>
+                                <form method="POST" action="/edit-item/{{ item.id }}">
+                                    <div class="form-group mb-2"><label>Name:</label><input type="text" name="name" value="{{ item.name }}" class="form-control-sm" style="width: 100%;" required></div>
+                                    <div class="form-group mb-2"><label>Category:</label>
+                                        <select name="category_id" class="form-control-sm" style="width: 100%;">
+                                            <option value="">-- None --</option>
+                                            {% for sub in subcategories %}
+                                            <option value="{{ sub.id }}" {% if sub.id == item.category_id %}selected{% endif %}>{{ sub.parent_name }} → {{ sub.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="form-group mb-2"><label>Container Location:</label>
+                                        <select name="container_id" class="form-control-sm" style="width: 100%;" required>
+                                            {% for c in containers %}
+                                            <option value="{{ c.id }}" {% if c.id == item.container_id %}selected{% endif %}>{{ c.id }} {% if c.description %}({{ c.description }}){% endif %}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="form-group mb-2"><label>Quantity:</label><input type="number" name="quantity" value="{{ item.quantity }}" min="1" class="form-control-sm" style="width: 100%;" required></div>
+                                    <div class="form-group mb-2"><label>1:1 Image URL:</label><input type="text" name="image_url" value="{{ item.image_url or '' }}" class="form-control-sm" style="width: 100%;" placeholder="https://..."></div>
+                                    <div class="form-group mb-2"><label>Notes / Tags:</label><textarea name="description" class="form-control-sm" style="width: 100%;" rows="2">{{ item.description or '' }}</textarea></div>
+                                    <button type="submit" class="btn btn-sm btn-primary">Save Changes</button>
+                                    <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('edit-form-{{ item.id }}').classList.add('hidden')">Cancel</button>
+                                </form>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="no-data">No items found.</p>
+                    {% endif %}
+                </div>
+            </main>
+
+            <!-- Sidebar ONLY IN EDIT MODE -->
+            {% if mode == 'edit' %}
+            <aside class="sidebar">
+                <div class="card">
+                    <h3 class="card-title">+ STORE NEW ITEM</h3>
+                    <form method="POST" action="/add-item">
+                        <div class="form-group"><label>ITEM NAME / MPN *</label><input type="text" id="add_item_name" name="name" class="form-control" placeholder="e.g. NE555P or WD 500GB" required></div>
+                        <div class="form-group"><label>CATEGORY</label>
+                            <select name="category_id" class="form-control">
+                                <option value="">-- None / Uncategorized --</option>
+                                {% for sub in subcategories %}
+                                <option value="{{ sub.id }}">{{ sub.parent_name }} → {{ sub.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group"><label>CONTAINER LOCATION *</label>
+                            <select name="container_id" class="form-control" required>
+                                <option value="" disabled selected>Select container...</option>
+                                {% for c in containers %}
+                                <option value="{{ c.id }}">{{ c.id }} {% if c.description %}({{ c.description }}){% endif %}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group"><label>QUANTITY</label><input type="number" name="quantity" class="form-control" value="1" min="1" required></div>
+                        <div class="form-group"><label>1:1 IMAGE URL</label><input type="text" id="add_item_image" name="image_url" class="form-control" placeholder="https://image-link.png"></div>
+                        <div class="form-group"><label>NOTES / TAGS</label><textarea name="description" class="form-control" rows="2" placeholder="e.g. DIP-8, tested ok"></textarea></div>
+                        <button type="submit" class="btn btn-primary btn-block">SAVE ITEM</button>
+                    </form>
+                </div>
+            </aside>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

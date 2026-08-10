@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Containers - AMAZONAS STORAGE</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        summary { cursor: pointer; font-weight: bold; font-size: 1.1rem; padding: 6px 0; user-select: none; }
+        summary:hover { color: #007bff; }
+        .container-schema-img { max-width: 100%; max-height: 180px; border-radius: 6px; margin-top: 8px; border: 1px solid #ddd; object-fit: contain; background: #fafafa; padding: 4px; }
+        .mode-badge { padding: 4px 10px; border-radius: 20px; font-weight: bold; font-size: 0.85rem; text-decoration: none; }
+        .mode-inventory { background: #28a745; color: white; }
+        .mode-edit { background: #ffc107; color: #212529; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-title"><h1>⚡ AMAZONAS STORAGE</h1></div>
+            <div class="header-right">
+                <a href="/toggle-mode" class="mode-badge mode-{{ mode }}">
+                    {% if mode == 'edit' %}✏️ EDIT MODE{% else %}🔍 INVENTORY MODE{% endif %}
+                </a>
+                <a href="/" class="btn btn-outline">Items List</a>
+                <a href="/containers" class="btn btn-primary">Tree View</a>
+                <a href="/categories" class="btn btn-outline">Categories</a>
+            </div>
+        </header>
+
+        {% for msg in get_flashed_messages(request) %}
+        <div class="alert alert-{{ msg.category }}">{{ msg.message }}</div>
+        {% endfor %}
+
+        <div class="main-layout">
+            <main class="content-area">
+                <div class="card">
+                    <h2 class="card-title">CONTAINER HIERARCHY (CLICK TO EXPAND / COLLAPSE)</h2>
+                    
+                    {% if tree %}
+                        {% for type_code, type_data in tree.items() %}
+                        <details open class="tree-group mb-3">
+                            <summary>
+                                <span class="badge badge-{{ type_code|lower }}">{{ type_code }}</span>
+                                {{ type_data.type_name }} ({{ type_data.mains|length }})
+                            </summary>
+
+                            <div class="tree-mains-grid mt-2" style="padding-left: 15px;">
+                                {% for main_num, main_data in type_data.mains.items() %}
+                                <details open class="main-container-box mb-2" style="border: 1px solid #e0e0e0; border-radius:6px; padding:8px;">
+                                    <summary class="main-header">
+                                        <strong>{{ type_code }}{{ main_num }}</strong>
+                                    </summary>
+
+                                    {% if main_data.main_container and mode == 'edit' %}
+                                    <form method="POST" action="/edit-container/{{ main_data.main_container.id }}" class="inline-form desc-edit-form mt-1 mb-1">
+                                        <input type="text" name="description" value="{{ main_data.main_container.description or '' }}" placeholder="Add description..." class="form-control-sm">
+                                        <button type="submit" class="btn btn-sm btn-secondary">Save</button>
+                                    </form>
+                                    {% endif %}
+
+                                    {% if main_data.has_image %}
+                                    <div class="schema-image-wrapper">
+                                        <img src="/assets/{{ main_data.main_id }}.png" alt="Schema {{ main_data.main_id }}" class="container-schema-img">
+                                    </div>
+                                    {% endif %}
+
+                                    {% if main_data.sub_containers %}
+                                    <div class="sub-containers-list mt-2">
+                                        {% for sub in main_data.sub_containers %}
+                                        <div class="sub-container-row">
+                                            <div class="sub-info">
+                                                <span class="sub-id">↳ {{ sub.id }}</span>
+                                                {% if mode == 'edit' %}
+                                                <form method="POST" action="/edit-container/{{ sub.id }}" class="inline-form desc-edit-form">
+                                                    <input type="text" name="description" value="{{ sub.description or '' }}" placeholder="Add description..." class="form-control-sm">
+                                                    <button type="submit" class="btn btn-sm btn-secondary">Save</button>
+                                                </form>
+                                                {% else %}
+                                                <small class="text-muted">({{ sub.description or 'No description' }})</small>
+                                                {% endif %}
+                                            </div>
+
+                                            <div class="sub-actions">
+                                                <span class="item-count-badge">{{ item_counts.get(sub.id, 0) }} items</span>
+                                                {% if item_counts.get(sub.id, 0) == 0 and mode == 'edit' %}
+                                                <form method="POST" action="/delete-container/{{ sub.id }}" class="inline-form" onsubmit="return confirm('Delete {{ sub.id }}?');">
+                                                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                                                </form>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </details>
+                                {% endfor %}
+                            </div>
+                        </details>
+                        {% endfor %}
+                    {% else %}
+                        <p class="no-data">No containers created yet.</p>
+                    {% endif %}
+                </div>
+            </main>
+
+            {% if mode == 'edit' %}
+            <aside class="sidebar">
+                <div class="card">
+                    <h3 class="card-title">+ NEW CONTAINER</h3>
+                    <form method="POST" action="/add-container">
+                        <input type="hidden" name="redirect_to" value="containers">
+                        <div class="form-group"><label>TYPE *</label>
+                            <select name="type_code" class="form-control" required>
+                                <option value="CB">CB - Cardboard Box</option>
+                                <option value="DW" selected>DW - Drawer Unit</option>
+                                <option value="SE">SE - Shelf / Cabinet</option>
+                                <option value="PB">PB - Plastic Box</option>
+                                <option value="OT">OT - Other Container</option>
+                            </select>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-6"><label>MAIN ID *</label><input type="number" name="main_num" class="form-control" min="1" required></div>
+                            <div class="form-group col-6"><label>SUB ID</label><input type="number" name="sub_num" class="form-control" min="1"></div>
+                        </div>
+                        <div class="form-group"><label>DESCRIPTION</label><input type="text" name="description" class="form-control"></div>
+                        <button type="submit" class="btn btn-primary btn-block">CREATE LOCATION</button>
+                    </form>
+                </div>
+            </aside>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

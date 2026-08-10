@@ -1,0 +1,246 @@
+* {
+    box-sizing: border-box;
+    border-radius: 0 !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+body {
+    background-color: #ffffff;
+    color: #000000;
+    margin: 0;
+    padding: 20px;
+    font-size: 15px;
+}
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Fejléc */
+header {
+    border-bottom: 3px solid #000000;
+    padding-bottom: 15px;
+    margin-bottom: 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+h1 {
+    margin: 0;
+    font-size: 24px;
+    text-transform: uppercase;
+    font-weight: 900;
+}
+
+.stats-bar {
+    font-size: 13px;
+    font-weight: bold;
+    background: #f0f0f0;
+    padding: 6px 12px;
+    border: 1px solid #000000;
+}
+
+/* Grid */
+.grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 25px;
+}
+
+@media (max-width: 850px) {
+    .grid { grid-template-columns: 1fr; }
+}
+
+/* Kereső */
+.search-box {
+    margin-bottom: 20px;
+}
+
+.search-input {
+    width: 100%;
+    padding: 14px;
+    font-size: 16px;
+    border: 2px solid #000000;
+    background: #ffffff;
+    color: #000000;
+    font-weight: bold;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #0052cc;
+    background: #f4f8ff;
+}
+
+/* Kártyák */
+.card {
+    border: 2px solid #000000;
+    padding: 20px;
+    margin-bottom: 25px;
+    background: #ffffff;
+}
+
+.card-header {
+    font-size: 16px;
+    font-weight: 800;
+    text-transform: uppercase;
+    border-bottom: 2px solid #000000;
+    padding-bottom: 8px;
+    margin-top: 0;
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Formok */
+label {
+    display: block;
+    font-weight: bold;
+    font-size: 12px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+
+input[type="text"],
+input[type="number"],
+select,
+textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #000000;
+    background: #ffffff;
+    color: #000000;
+    font-size: 14px;
+    margin-bottom: 15px;
+}
+
+input:focus, select:focus, textarea:focus {
+    outline: 2px solid #0052cc;
+}
+
+.form-row {
+    display: flex;
+    gap: 10px;
+}
+
+.form-row > div {
+    flex: 1;
+}
+
+/* Gombok */
+.btn {
+    display: inline-block;
+    background: #000000;
+    color: #ffffff;
+    border: 1px solid #000000;
+    padding: 10px 18px;
+    font-weight: bold;
+    font-size: 13px;
+    text-transform: uppercase;
+    cursor: pointer;
+    text-decoration: none;
+    text-align: center;
+}
+
+.btn:hover { background: #333333; }
+
+.btn-blue {
+    background: #0052cc;
+    border-color: #0052cc;
+    color: #ffffff;
+}
+
+.btn-blue:hover { background: #003d99; }
+
+.btn-outline {
+    background: #ffffff;
+    color: #000000;
+    border: 1px solid #000000;
+}
+
+.btn-outline:hover { background: #f0f0f0; }
+
+.btn-sm {
+    padding: 4px 8px;
+    font-size: 11px;
+}
+
+.btn-danger {
+    background: #ffffff;
+    color: #cc0000;
+    border: 1px solid #cc0000;
+}
+
+.btn-danger:hover {
+    background: #cc0000;
+    color: #ffffff;
+}
+
+/* Badges */
+.badge {
+    display: inline-block;
+    padding: 4px 8px;
+    font-weight: 900;
+    font-size: 13px;
+    border: 1px solid #000000;
+}
+
+.badge-dw { background: #0052cc; color: #ffffff; border-color: #0052cc; }
+.badge-cb { background: #000000; color: #ffffff; }
+.badge-se { background: #f0f0f0; color: #000000; border: 1px solid #000000; }
+.badge-ot { background: #ffffff; color: #0052cc; border: 1px solid #0052cc; }
+
+/* Táblázat */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 2px solid #000000;
+}
+
+th {
+    background: #000000;
+    color: #ffffff;
+    text-align: left;
+    padding: 10px;
+    font-size: 12px;
+    text-transform: uppercase;
+}
+
+td {
+    padding: 10px;
+    border-bottom: 1px solid #000000;
+    vertical-align: middle;
+}
+
+tr:nth-child(even) { background-color: #f9f9f9; }
+
+.item-name { font-weight: bold; font-size: 15px; }
+.item-desc { font-size: 12px; color: #444444; margin-top: 2px; }
+
+.actions-cell {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.type-legend {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 15px;
+    font-size: 12px;
+    flex-wrap: wrap;
+}
+
+.type-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.hidden {
+    display: none !important;
+}
