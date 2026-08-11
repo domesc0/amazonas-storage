@@ -2,106 +2,69 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Categories - AMAZONAS STORAGE</title>
-    <link rel="stylesheet" href="/static/css/style.css">
     <style>
-        summary { cursor: pointer; font-weight: bold; font-size: 1.1rem; padding: 8px 0; user-select: none; }
-        summary:hover { color: #007bff; }
-        .mode-badge { padding: 5px 12px; border-radius: 20px; font-weight: bold; font-size: 0.85rem; text-decoration: none; }
-        .mode-inventory { background: #28a745; color: white; }
-        .mode-edit { background: #ffc107; color: #212529; }
-        .cat-tree-box { border: 1px solid #e0e0e0; border-radius: 6px; padding: 10px; margin-bottom: 12px; background: #fff; }
-        .sub-cat-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; background: #f8f9fa; border-radius: 4px; border: 1px solid #e9ecef; margin-bottom: 4px; }
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: #eee; margin: 0; padding: 12px; }
+        @media(min-width: 768px) { body { padding: 20px; } }
+        header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #00adb5; padding-bottom: 10px; flex-wrap: wrap; gap: 10px; }
+        h1 { margin: 0; font-size: 1.5rem; }
+        a { color: #00adb5; text-decoration: none; }
+        .box { background: #1e1e1e; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid #333; }
+        .cat-tree { margin-top: 15px; }
+        .main-cat { background: #252525; padding: 10px; margin: 10px 0; border-radius: 6px; }
+        .sub-cat { margin-left: 15px; padding: 5px; border-left: 2px solid #00adb5; display: flex; justify-content: space-between; align-items: center; margin-top: 5px; }
+        input, select, button { background: #252525; color: #eee; border: 1px solid #444; padding: 10px; border-radius: 4px; font-size: 0.95rem; }
+        form.add-cat-form { display: flex; flex-direction: column; gap: 8px; }
+        @media(min-width: 600px) {
+            form.add-cat-form { flex-direction: row; }
+            input, select { flex: 1; }
+        }
+        .btn-danger { background: #ff2e63; color: white; border: none; cursor: pointer; padding: 6px 12px; border-radius: 4px; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <header>
-            <div class="header-title"><h1>⚡ AMAZONAS STORAGE</h1></div>
-            <div class="header-right">
-                <a href="/toggle-mode" class="mode-badge mode-{{ mode }}">
-                    {% if mode == 'edit' %}✏️ EDIT MODE{% else %}🔍 INVENTORY MODE{% endif %}
-                </a>
-                <a href="/" class="btn btn-outline">Items List</a>
-                <a href="/containers" class="btn btn-outline">Containers Tree</a>
-                <a href="/categories" class="btn btn-primary">Categories</a>
-            </div>
-        </header>
+    <header>
+        <h1>📁 Category Manager</h1>
+        <a href="/">« Back to Home</a>
+    </header>
 
-        {% for msg in get_flashed_messages(request) %}
-        <div class="alert alert-{{ msg.category }}">{{ msg.message }}</div>
-        {% endfor %}
+    <div class="box">
+        <h3>➕ Add New Category</h3>
+        <form method="post" action="/add-category" class="add-cat-form">
+            <input type="text" name="name" placeholder="Category Name *" required>
+            <select name="parent_id">
+                <option value="">-- Main Category (leave empty for root) --</option>
+                {% for m in mains %}
+                    <option value="{{ m.id }}">{{ m.name }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" style="background: #00adb5; color: #121212; font-weight: bold; min-height: 40px;">Create Category</button>
+        </form>
+    </div>
 
-        <div class="main-layout">
-            <main class="content-area">
-                <div class="card">
-                    <h2 class="card-title">CATEGORY HIERARCHY (CLICK TO EXPAND / COLLAPSE)</h2>
-                    
-                    {% if category_tree %}
-                        {% for main in category_tree %}
-                        <details open class="cat-tree-box">
-                            <summary>
-                                📁 <strong>{{ main.name }}</strong>
-                                <span class="badge badge-secondary">{{ main.subs|length }} subcategories</span>
-                            </summary>
-
-                            <div class="subcategories-tree mt-2" style="padding-left: 20px;">
-                                {% if main.subs %}
-                                    {% for sub in main.subs %}
-                                    <div class="sub-cat-row">
-                                        <span>↳ <strong>{{ sub.name }}</strong></span>
-                                        <div>
-                                            <span class="badge badge-qty">{{ sub.item_count }} items</span>
-                                            {% if mode == 'edit' %}
-                                                {% if sub.item_count == 0 %}
-                                                <form method="POST" action="/delete-category/{{ sub.id }}" class="inline-form" onsubmit="return confirm('Delete category {{ sub.name }}?');">
-                                                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-                                                </form>
-                                                {% endif %}
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                    {% endfor %}
-                                {% else %}
-                                    <p class="text-muted" style="margin-left: 10px; font-size: 0.9rem;">No subcategories under this parent.</p>
-                                {% endif %}
-                            </div>
-                        </details>
-                        {% endfor %}
-                    {% else %}
-                        <p class="no-data">No categories created yet.</p>
-                    {% endif %}
-                </div>
-            </main>
-
-            <!-- Sidebar KIZÁRÓLAG Edit módban -->
-            {% if mode == 'edit' %}
-            <aside class="sidebar">
-                <div class="card">
-                    <h3 class="card-title">+ NEW CATEGORY</h3>
-                    <form method="POST" action="/add-category">
-                        <div class="form-group">
-                            <label>CATEGORY NAME *</label>
-                            <input type="text" name="name" class="form-control" placeholder="e.g. Semiconductors or Fasteners" required>
-                        </div>
-                        <div class="form-group">
-                            <label>PARENT CATEGORY</label>
-                            <select name="parent_id" class="form-control">
-                                <option value="">-- None (Create Main Category) --</option>
-                                {% for main in mains %}
-                                <option value="{{ main.id }}">{{ main.name }}</option>
-                                {% endfor %}
-                            </select>
-                            <small class="text-muted">Leave empty to create a new top-level Main Category.</small>
-                        </div>
-                        <button type="submit" class="btn btn-primary btn-block">CREATE CATEGORY</button>
+    <div class="box cat-tree">
+        <h3>Category Tree</h3>
+        {% for cat in category_tree %}
+            <div class="main-cat">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <strong style="color: #00adb5; font-size: 1.1em;">📁 {{ cat.name }}</strong>
+                    <form method="post" action="/delete-category/{{ cat.id }}" style="display:inline;">
+                        <button type="submit" class="btn-danger" onclick="return confirm('Delete this main category?')">Delete</button>
                     </form>
                 </div>
-            </aside>
-            {% endif %}
-        </div>
+
+                {% for sub in cat.subs %}
+                    <div class="sub-cat">
+                        <span>└─ {{ sub.name }} <small style="color: #888;">({{ sub.item_count }} items)</small></span>
+                        <form method="post" action="/delete-category/{{ sub.id }}" style="display:inline;">
+                            <button type="submit" class="btn-danger" onclick="return confirm('Delete this subcategory?')">Delete</button>
+                        </form>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endfor %}
     </div>
 </body>
 </html>

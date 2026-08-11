@@ -1,192 +1,333 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
 <head>
-    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AMAZONAS STORAGE SYSTEM</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-    <style>
-        .item-thumb-1to1 {
-            width: 70px;
-            height: 70px;
-            aspect-ratio: 1 / 1;
-            object-fit: cover;
-            border-radius: 6px;
-            background: #eee;
-            border: 1px solid #ccc;
-            flex-shrink: 0;
+    <title>AMAZONAS Storage</title>
+    <style type="text/css">
+        * {
+            -webkit-box-sizing: border-box;
+            -moz-box-sizing: border-box;
+            box-sizing: border-box;
         }
-        .item-flex-wrapper {
-            display: flex;
-            gap: 12px;
-            align-items: flex-start;
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background-color: #121212;
+            color: #eeeeee;
+            margin: 0;
+            padding: 8px;
         }
-        .mode-badge {
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-weight: bold;
-            font-size: 0.85rem;
+        .header {
+            background-color: #1e1e1e;
+            border-bottom: 3px solid #00adb5;
+            padding: 10px;
+            margin-bottom: 12px;
+        }
+        .header h1 {
+            margin: 0 0 10px 0;
+            color: #00adb5;
+            font-size: 20px;
+        }
+        .nav-btn {
+            display: inline-block;
+            background-color: #333333;
+            color: #ffffff;
             text-decoration: none;
+            padding: 8px 12px;
+            margin: 2px;
+            border: 1px solid #555555;
+            font-size: 14px;
+            font-weight: bold;
         }
-        .mode-inventory { background: #28a745; color: white; }
-        .mode-edit { background: #ffc107; color: #212529; }
+        .flash {
+            padding: 8px;
+            margin-bottom: 10px;
+            background-color: #0288d1;
+            color: #ffffff;
+            font-size: 14px;
+        }
+        .search-box {
+            margin-bottom: 15px;
+            background-color: #1e1e1e;
+            padding: 10px;
+        }
+        input[type="text"], input[type="number"], select, textarea {
+            background-color: #252525;
+            color: #ffffff;
+            border: 1px solid #444444;
+            padding: 8px;
+            font-size: 16px;
+            margin-bottom: 6px;
+            width: 100%;
+        }
+        .btn {
+            background-color: #00adb5;
+            color: #121212;
+            border: none;
+            padding: 10px 15px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 4px;
+        }
+        .btn-danger {
+            background-color: #ff2e63;
+            color: #ffffff;
+        }
+        
+        .card-container {
+            width: 100%;
+        }
+        .card {
+            background-color: #1e1e1e;
+            border: 1px solid #333333;
+            padding: 10px;
+            margin-bottom: 12px;
+            float: left;
+            width: 100%;
+        }
+        @media screen and (min-width: 600px) {
+            .card {
+                width: 49%;
+                margin-right: 2%;
+            }
+            .card:nth-child(2n) {
+                margin-right: 0;
+            }
+        }
+        .clearfix:after {
+            content: "";
+            display: table;
+            clear: both;
+        }
+
+        /* UJ KÉPKERET (Nem vakít, nem torzít) */
+        .img-box {
+            width: 100%;
+            height: 150px;
+            background-color: #ffffff; /* Fehér háttér, így a fehér PNG/JPG beolvad! */
+            border: 1px solid #444444;
+            margin-bottom: 8px;
+            text-align: center;
+            line-height: 150px;
+            overflow: hidden;
+            border-radius: 4px;
+            /* Modern kijelzőkön kicsit tompítjuk a vakító fehéret */
+            -webkit-filter: brightness(0.92);
+            filter: brightness(0.92);
+        }
+        .img-box img {
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            vertical-align: middle;
+            display: inline-block;
+            /* Modern böngészőknek */
+            object-fit: contain;
+        }
+
+        .paste-area {
+            border: 2px dashed #00adb5;
+            padding: 10px;
+            text-align: center;
+            font-size: 12px;
+            color: #aaaaaa;
+            margin-bottom: 8px;
+            background-color: #151515;
+        }
+        .pagination {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .pagination a, .pagination span {
+            display: inline-block;
+            padding: 8px 12px;
+            background-color: #1e1e1e;
+            color: #ffffff;
+            border: 1px solid #333333;
+            text-decoration: none;
+            margin: 2px;
+        }
+        .pagination .active {
+            background-color: #00adb5;
+            color: #121212;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <header>
-            <div class="header-title">
-                <h1>⚡ AMAZONAS STORAGE</h1>
-            </div>
-            <div class="header-right">
-                <!-- Mode Toggle Button -->
-                <a href="/toggle-mode" class="mode-badge mode-{{ mode }}" title="Click to switch mode">
-                    {% if mode == 'edit' %}✏️ EDIT MODE{% else %}🔍 INVENTORY MODE{% endif %}
-                </a>
 
-                <a href="/containers" class="btn btn-outline">Tree View</a>
-                <a href="/categories" class="btn btn-outline">Categories</a>
-                {% if mode == 'edit' %}
-                <a href="/backup" class="btn btn-outline">💾 Backup</a>
-                {% endif %}
-                <div class="stats-badge">ITEMS: {{ total_items }} | CONTAINERS: {{ total_containers }}</div>
-            </div>
-        </header>
-
-        {% for msg in get_flashed_messages(request) %}
-        <div class="alert alert-{{ msg.category }}">{{ msg.message }}</div>
-        {% endfor %}
-
-        <!-- Search Bar -->
-        <form method="GET" action="/" class="search-form">
-            <input type="text" name="q" value="{{ search_query }}" placeholder="🔍 SEARCH (name, category, container...)" class="search-input" autofocus>
-        </form>
-
-        <div class="main-layout">
-            <!-- Main Content Area -->
-            <main class="content-area">
-                <div class="card">
-                    <h2 class="card-title">
-                        {% if search_query %}SEARCH RESULTS ({{ total_found }})
-                        {% elif mode == 'edit' %}RECENT ITEMS (3 PER PAGE)
-                        {% else %}ITEMS INVENTORY (20 PER PAGE)
-                        {% endif %}
-                    </h2>
-                    
-                    {% if items %}
-                    <div class="items-grid">
-                        {% for item in items %}
-                        <div class="item-card">
-                            <div class="item-flex-wrapper">
-                                <!-- 1:1 Image Thumbnail -->
-                                {% if item.image_url %}
-                                <img src="{{ item.image_url }}" alt="{{ item.name }}" class="item-thumb-1to1">
-                                {% else %}
-                                <div class="item-thumb-1to1 d-flex align-items-center justify-content-center" style="display:flex; align-items:center; justify-content:center; font-size:1.5rem; color:#aaa;">📦</div>
-                                {% endif %}
-
-                                <div style="flex-grow: 1;">
-                                    <div class="item-row-top">
-                                        <span class="item-name"><strong>{{ item.name }}</strong></span>
-                                        <span class="badge badge-qty">x{{ item.quantity }}</span>
-                                        <span class="badge badge-container">{{ item.container_id }}</span>
-                                    </div>
-                                    
-                                    {% if item.parent_category_name or item.category_name %}
-                                    <div class="item-category mb-1 mt-1">
-                                        <span class="badge badge-secondary">
-                                            📁 {{ item.parent_category_name or '' }} {% if item.parent_category_name and item.category_name %} / {% endif %} {{ item.category_name or '' }}
-                                        </span>
-                                    </div>
-                                    {% endif %}
-
-                                    {% if item.description %}
-                                    <div class="item-description mb-2">{{ item.description }}</div>
-                                    {% endif %}
-                                </div>
-                            </div>
-
-                            <!-- Actions ONLY IN EDIT MODE -->
-                            {% if mode == 'edit' %}
-                            <div class="item-actions mt-2">
-                                <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('edit-form-{{ item.id }}').classList.toggle('hidden')">
-                                    ✏️ Edit / Move
-                                </button>
-                                <form method="POST" action="/delete-item/{{ item.id }}" class="inline-form" onsubmit="return confirm('Delete this item?');">
-                                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-                                </form>
-                            </div>
-
-                            <!-- HIDDEN EDIT FORM -->
-                            <div id="edit-form-{{ item.id }}" class="edit-box hidden mt-3 p-3" style="background: rgba(0,0,0,0.03); border-radius: 6px; border: 1px dashed #ccc;">
-                                <h4>Edit Item #{{ item.id }}</h4>
-                                <form method="POST" action="/edit-item/{{ item.id }}">
-                                    <div class="form-group mb-2"><label>Name:</label><input type="text" name="name" value="{{ item.name }}" class="form-control-sm" style="width: 100%;" required></div>
-                                    <div class="form-group mb-2"><label>Category:</label>
-                                        <select name="category_id" class="form-control-sm" style="width: 100%;">
-                                            <option value="">-- None --</option>
-                                            {% for sub in subcategories %}
-                                            <option value="{{ sub.id }}" {% if sub.id == item.category_id %}selected{% endif %}>{{ sub.parent_name }} → {{ sub.name }}</option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                    <div class="form-group mb-2"><label>Container Location:</label>
-                                        <select name="container_id" class="form-control-sm" style="width: 100%;" required>
-                                            {% for c in containers %}
-                                            <option value="{{ c.id }}" {% if c.id == item.container_id %}selected{% endif %}>{{ c.id }} {% if c.description %}({{ c.description }}){% endif %}</option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                    <div class="form-group mb-2"><label>Quantity:</label><input type="number" name="quantity" value="{{ item.quantity }}" min="1" class="form-control-sm" style="width: 100%;" required></div>
-                                    <div class="form-group mb-2"><label>1:1 Image URL:</label><input type="text" name="image_url" value="{{ item.image_url or '' }}" class="form-control-sm" style="width: 100%;" placeholder="https://..."></div>
-                                    <div class="form-group mb-2"><label>Notes / Tags:</label><textarea name="description" class="form-control-sm" style="width: 100%;" rows="2">{{ item.description or '' }}</textarea></div>
-                                    <button type="submit" class="btn btn-sm btn-primary">Save Changes</button>
-                                    <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('edit-form-{{ item.id }}').classList.add('hidden')">Cancel</button>
-                                </form>
-                            </div>
-                            {% endif %}
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <p class="no-data">No items found.</p>
-                    {% endif %}
-                </div>
-            </main>
-
-            <!-- Sidebar ONLY IN EDIT MODE -->
-            {% if mode == 'edit' %}
-            <aside class="sidebar">
-                <div class="card">
-                    <h3 class="card-title">+ STORE NEW ITEM</h3>
-                    <form method="POST" action="/add-item">
-                        <div class="form-group"><label>ITEM NAME / MPN *</label><input type="text" id="add_item_name" name="name" class="form-control" placeholder="e.g. NE555P or WD 500GB" required></div>
-                        <div class="form-group"><label>CATEGORY</label>
-                            <select name="category_id" class="form-control">
-                                <option value="">-- None / Uncategorized --</option>
-                                {% for sub in subcategories %}
-                                <option value="{{ sub.id }}">{{ sub.parent_name }} → {{ sub.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="form-group"><label>CONTAINER LOCATION *</label>
-                            <select name="container_id" class="form-control" required>
-                                <option value="" disabled selected>Select container...</option>
-                                {% for c in containers %}
-                                <option value="{{ c.id }}">{{ c.id }} {% if c.description %}({{ c.description }}){% endif %}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="form-group"><label>QUANTITY</label><input type="number" name="quantity" class="form-control" value="1" min="1" required></div>
-                        <div class="form-group"><label>1:1 IMAGE URL</label><input type="text" id="add_item_image" name="image_url" class="form-control" placeholder="https://image-link.png"></div>
-                        <div class="form-group"><label>NOTES / TAGS</label><textarea name="description" class="form-control" rows="2" placeholder="e.g. DIP-8, tested ok"></textarea></div>
-                        <button type="submit" class="btn btn-primary btn-block">SAVE ITEM</button>
-                    </form>
-                </div>
-            </aside>
-            {% endif %}
+    <div class="header">
+        <h1>AMAZONAS STORAGE</h1>
+        <div>
+            <a href="/toggle-mode" class="nav-btn">Mód: {{ mode.upper() }}</a>
+            <a href="/containers" class="nav-btn">Raktárak</a>
+            <a href="/categories" class="nav-btn">Kategóriák</a>
+            <a href="/backup" class="nav-btn">Mentés</a>
         </div>
     </div>
+
+    {% with messages = get_flashed_messages(request) %}
+        {% if messages %}
+            {% for msg in messages %}
+                <div class="flash">{{ msg.message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="search-box">
+        <form method="get" action="/">
+            <input type="text" name="q" value="{{ search_query }}" placeholder="Keresés név, leírás vagy tároló alapján...">
+            <button type="submit" class="btn">🔍 Keresés</button>
+        </form>
+    </div>
+
+    {% if mode == 'edit' %}
+    <div style="background-color: #1e1e1e; padding: 10px; margin-bottom: 15px; border: 1px solid #00adb5;">
+        <h3 style="margin-top:0; color:#00adb5;">➕ Új alkatrész</h3>
+        <form method="post" action="/add-item">
+            <input type="text" name="name" placeholder="Név / Cikkszám *" required>
+            <input type="text" name="description" placeholder="Leírás">
+            <input type="number" name="quantity" value="1" placeholder="Mennyiség">
+            
+            <select name="container_id" required>
+                <option value="">-- Tároló kiválasztása * --</option>
+                {% for c in containers %}
+                    <option value="{{ c.id }}">{{ c.id }} - {{ c.description or '' }}</option>
+                {% endfor %}
+            </select>
+
+            <select name="category_id">
+                <option value="">-- Kategória --</option>
+                {% for cat in subcategories %}
+                    <option value="{{ cat.id }}">{{ cat.parent_name }} > {{ cat.name }}</option>
+                {% endfor %}
+            </select>
+
+            <input type="text" name="image_url" placeholder="Kép URL (letöltés + duplikáció szűrés)">
+            <button type="submit" class="btn">Mentés</button>
+        </form>
+    </div>
+    {% endif %}
+
+    <!-- ALKATRÉSZEK RÁCS -->
+    <div class="card-container clearfix">
+        {% for item in items %}
+            <div class="card" id="card-{{ item.id }}">
+                {% if mode == 'edit' %}
+                    <form method="post" action="/edit-item/{{ item.id }}">
+                        <input type="text" name="name" value="{{ item.name }}" required>
+                        <textarea name="description" rows="2">{{ item.description or '' }}</textarea>
+                        
+                        <input type="number" name="quantity" value="{{ item.quantity }}">
+                        
+                        <select name="container_id">
+                            {% for c in containers %}
+                                <option value="{{ c.id }}" {% if c.id == item.container_id %}selected{% endif %}>{{ c.id }}</option>
+                            {% endfor %}
+                        </select>
+
+                        <select name="category_id">
+                            <option value="">-- Nincs kategória --</option>
+                            {% for cat in subcategories %}
+                                <option value="{{ cat.id }}" {% if cat.id == item.category_id %}selected{% endif %}>{{ cat.parent_name }} > {{ cat.name }}</option>
+                            {% endfor %}
+                        </select>
+
+                        <input type="text" id="img-input-{{ item.id }}" name="image_url" value="{{ item.image_url or '' }}" placeholder="Kép URL / Fájlnév">
+
+                        <div class="paste-area" onclick="setActivePaste({{ item.id }})" id="paste-zone-{{ item.id }}">
+                            📋 Bökj ide, majd nyomj <strong>Ctrl+V</strong>-t
+                        </div>
+
+                        <button type="submit" class="btn">Módosítás</button>
+                        <button type="submit" formaction="/delete-item/{{ item.id }}" class="btn btn-danger" onclick="return confirm('Törlöd?')">Törlés</button>
+                    </form>
+                {% else %}
+                    <!-- INVENTÁRIUM NÉZET -->
+                    <div class="img-box">
+                        {% if item.image_url %}
+                            {% if item.image_url.startswith('http') %}
+                                <img src="{{ item.image_url }}" alt="Icon">
+                            {% else %}
+                                <img src="/assets/icon/{{ item.image_url }}" alt="Icon">
+                            {% endif %}
+                        {% else %}
+                            <span style="color: #888888; font-size: 13px;">Nincs kép</span>
+                        {% endif %}
+                    </div>
+
+                    <h3 style="margin: 5px 0; color: #00adb5;">{{ item.name }}</h3>
+                    <p style="margin: 2px 0; color: #aaa; font-size: 13px;">{{ item.description or '' }}</p>
+                    
+                    <div style="margin-top: 8px; border-top: 1px solid #333; padding-top: 5px;">
+                        <span style="background-color: #333; padding: 2px 6px; font-weight: bold;">📦 {{ item.container_id }}</span>
+                        <span style="float: right; font-weight: bold; color: #00adb5;">{{ item.quantity }} db</span>
+                    </div>
+                {% endif %}
+            </div>
+        {% else %}
+            <p style="text-align: center; color: #888;">Nincs találat.</p>
+        {% endfor %}
+    </div>
+
+    {% if total_pages > 1 %}
+    <div class="pagination">
+        {% for p in page_range %}
+            <a href="/?page={{ p }}{% if search_query %}&q={{ search_query }}{% endif %}" class="{% if p == current_page %}active{% endif %}">{{ p }}</a>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <script type="text/javascript">
+        var activeItemId = null;
+
+        function setActivePaste(id) {
+            activeItemId = id;
+            var zones = document.getElementsByClassName('paste-area');
+            for(var i=0; i<zones.length; i++) {
+                zones[i].style.backgroundColor = '#151515';
+            }
+            document.getElementById('paste-zone-' + id).style.backgroundColor = '#004d40';
+        }
+
+        document.addEventListener('paste', function (e) {
+            if (!activeItemId) return;
+
+            var clipboardData = e.clipboardData || (e.originalEvent && e.originalEvent.clipboardData);
+            if (!clipboardData) return;
+
+            var items = clipboardData.items;
+            if (!items) return;
+
+            for (var i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image') !== -1) {
+                    var blob = items[i].getAsFile();
+                    var reader = new FileReader();
+
+                    reader.onload = function (evt) {
+                        var xhr = new XMLHttpRequest();
+                        xhr.open('POST', '/upload-pasted-icon/' + activeItemId, true);
+                        xhr.setRequestHeader('Content-Type', 'application/json');
+
+                        xhr.onreadystatechange = function () {
+                            if (xhr.readyState === 4 && xhr.status === 200) {
+                                var response = JSON.parse(xhr.responseText);
+                                if (response.success) {
+                                    document.getElementById('img-input-' + activeItemId).value = response.filename;
+                                    document.getElementById('paste-zone-' + activeItemId).innerHTML = "✅ Feltöltve!";
+                                }
+                            }
+                        };
+
+                        xhr.send(JSON.stringify({ image: evt.target.result }));
+                    };
+                    reader.readAsDataURL(blob);
+                }
+            }
+        });
+    </script>
 </body>
 </html>
