@@ -26,12 +26,12 @@
 </head>
 <body>
     <header>
-        <h1>📦 Container Manager</h1>
+        <h1>Container Manager</h1>
         <a href="/">« Back to Home</a>
     </header>
 
     <div class="add-box">
-        <h3>➕ Add New Container</h3>
+        <h3>Add New Container</h3>
         <form method="post" action="/add-container">
             <input type="hidden" name="redirect_to" value="containers">
             <select name="type_code" required>
@@ -57,7 +57,7 @@
                     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 5px;">
                         <strong>Main Container: {{ main_data.main_id }}</strong>
                         {% if main_data.has_image %}
-                            <span style="color: #4caf50; font-size: 0.85em;">📸 Image Available</span>
+                            <span style="color: #4caf50; font-size: 0.85em;">Image Available</span>
                         {% endif %}
                     </div>
 

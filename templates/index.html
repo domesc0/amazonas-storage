@@ -102,18 +102,16 @@
             clear: both;
         }
 
-        /* UJ KÉPKERET (Nem vakít, nem torzít) */
         .img-box {
             width: 100%;
             height: 150px;
-            background-color: #ffffff; /* Fehér háttér, így a fehér PNG/JPG beolvad! */
+            background-color: #ffffff;
             border: 1px solid #444444;
             margin-bottom: 8px;
             text-align: center;
             line-height: 150px;
             overflow: hidden;
             border-radius: 4px;
-            /* Modern kijelzőkön kicsit tompítjuk a vakító fehéret */
             -webkit-filter: brightness(0.92);
             filter: brightness(0.92);
         }
@@ -124,7 +122,6 @@
             height: auto;
             vertical-align: middle;
             display: inline-block;
-            /* Modern böngészőknek */
             object-fit: contain;
         }
 
@@ -162,10 +159,11 @@
     <div class="header">
         <h1>AMAZONAS STORAGE</h1>
         <div>
-            <a href="/toggle-mode" class="nav-btn">Mód: {{ mode.upper() }}</a>
-            <a href="/containers" class="nav-btn">Raktárak</a>
-            <a href="/categories" class="nav-btn">Kategóriák</a>
-            <a href="/backup" class="nav-btn">Mentés</a>
+            <a href="/toggle-mode" class="nav-btn">Mode: {{ mode.upper() }}</a>
+            <a href="/containers" class="nav-btn">Containers</a>
+            <a href="/categories" class="nav-btn">Categories</a>
+            <a href="/backup" class="nav-btn">Backup</a>
+            <a href="/sync-images" class="nav-btn">Sync Images</a>
         </div>
     </div>
 
@@ -179,40 +177,40 @@
 
     <div class="search-box">
         <form method="get" action="/">
-            <input type="text" name="q" value="{{ search_query }}" placeholder="Keresés név, leírás vagy tároló alapján...">
-            <button type="submit" class="btn">🔍 Keresés</button>
+            <input type="text" name="q" value="{{ search_query }}" placeholder="Search by name, description, or container...">
+            <button type="submit" class="btn">Search</button>
         </form>
     </div>
 
     {% if mode == 'edit' %}
     <div style="background-color: #1e1e1e; padding: 10px; margin-bottom: 15px; border: 1px solid #00adb5;">
-        <h3 style="margin-top:0; color:#00adb5;">➕ Új alkatrész</h3>
+        <h3 style="margin-top:0; color:#00adb5;">Add New Item</h3>
         <form method="post" action="/add-item">
-            <input type="text" name="name" placeholder="Név / Cikkszám *" required>
-            <input type="text" name="description" placeholder="Leírás">
-            <input type="number" name="quantity" value="1" placeholder="Mennyiség">
+            <input type="text" name="name" placeholder="Name / Part Number *" required>
+            <input type="text" name="description" placeholder="Description">
+            <input type="number" name="quantity" value="1" placeholder="Quantity">
             
             <select name="container_id" required>
-                <option value="">-- Tároló kiválasztása * --</option>
+                <option value="">-- Select Container * --</option>
                 {% for c in containers %}
                     <option value="{{ c.id }}">{{ c.id }} - {{ c.description or '' }}</option>
                 {% endfor %}
             </select>
 
             <select name="category_id">
-                <option value="">-- Kategória --</option>
+                <option value="">-- Category --</option>
                 {% for cat in subcategories %}
                     <option value="{{ cat.id }}">{{ cat.parent_name }} > {{ cat.name }}</option>
                 {% endfor %}
             </select>
 
-            <input type="text" name="image_url" placeholder="Kép URL (letöltés + duplikáció szűrés)">
-            <button type="submit" class="btn">Mentés</button>
+            <input type="text" name="image_url" placeholder="Image URL (download + deduplication)">
+            <button type="submit" class="btn">Save</button>
         </form>
     </div>
     {% endif %}
 
-    <!-- ALKATRÉSZEK RÁCS -->
+    <!-- ITEM GRID -->
     <div class="card-container clearfix">
         {% for item in items %}
             <div class="card" id="card-{{ item.id }}">
@@ -230,23 +228,23 @@
                         </select>
 
                         <select name="category_id">
-                            <option value="">-- Nincs kategória --</option>
+                            <option value="">-- No Category --</option>
                             {% for cat in subcategories %}
                                 <option value="{{ cat.id }}" {% if cat.id == item.category_id %}selected{% endif %}>{{ cat.parent_name }} > {{ cat.name }}</option>
                             {% endfor %}
                         </select>
 
-                        <input type="text" id="img-input-{{ item.id }}" name="image_url" value="{{ item.image_url or '' }}" placeholder="Kép URL / Fájlnév">
+                        <input type="text" id="img-input-{{ item.id }}" name="image_url" value="{{ item.image_url or '' }}" placeholder="Image URL / Filename">
 
                         <div class="paste-area" onclick="setActivePaste({{ item.id }})" id="paste-zone-{{ item.id }}">
-                            📋 Bökj ide, majd nyomj <strong>Ctrl+V</strong>-t
+                            Click here, then press <strong>Ctrl+V</strong>
                         </div>
 
-                        <button type="submit" class="btn">Módosítás</button>
-                        <button type="submit" formaction="/delete-item/{{ item.id }}" class="btn btn-danger" onclick="return confirm('Törlöd?')">Törlés</button>
+                        <button type="submit" class="btn">Update</button>
+                        <button type="submit" formaction="/delete-item/{{ item.id }}" class="btn btn-danger" onclick="return confirm('Delete item?')">Delete</button>
                     </form>
                 {% else %}
-                    <!-- INVENTÁRIUM NÉZET -->
+                    <!-- INVENTORY VIEW -->
                     <div class="img-box">
                         {% if item.image_url %}
                             {% if item.image_url.startswith('http') %}
@@ -255,7 +253,7 @@
                                 <img src="/assets/icon/{{ item.image_url }}" alt="Icon">
                             {% endif %}
                         {% else %}
-                            <span style="color: #888888; font-size: 13px;">Nincs kép</span>
+                            <span style="color: #888888; font-size: 13px;">No image</span>
                         {% endif %}
                     </div>
 
@@ -263,13 +261,13 @@
                     <p style="margin: 2px 0; color: #aaa; font-size: 13px;">{{ item.description or '' }}</p>
                     
                     <div style="margin-top: 8px; border-top: 1px solid #333; padding-top: 5px;">
-                        <span style="background-color: #333; padding: 2px 6px; font-weight: bold;">📦 {{ item.container_id }}</span>
-                        <span style="float: right; font-weight: bold; color: #00adb5;">{{ item.quantity }} db</span>
+                        <span style="background-color: #333; padding: 2px 6px; font-weight: bold;">{{ item.container_id }}</span>
+                        <span style="float: right; font-weight: bold; color: #00adb5;">{{ item.quantity }} pcs</span>
                     </div>
                 {% endif %}
             </div>
         {% else %}
-            <p style="text-align: center; color: #888;">Nincs találat.</p>
+            <p style="text-align: center; color: #888;">No results found.</p>
         {% endfor %}
     </div>
 
@@ -317,7 +315,7 @@
                                 var response = JSON.parse(xhr.responseText);
                                 if (response.success) {
                                     document.getElementById('img-input-' + activeItemId).value = response.filename;
-                                    document.getElementById('paste-zone-' + activeItemId).innerHTML = "✅ Feltöltve!";
+                                    document.getElementById('paste-zone-' + activeItemId).innerHTML = "Uploaded!";
                                 }
                             }
                         };

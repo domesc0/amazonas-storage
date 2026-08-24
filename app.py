@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 import uvicorn
-
+import threading
 import database as db_module
 import image_manager as img_mgr
 
@@ -89,6 +89,8 @@ def init_db():
 
 init_db()
 
+threading.Thread(target=img_mgr.sync_all_db_images, daemon=True).start()
+
 def flash(request: Request, message: str, category: str = "success"):
     if "flash_messages" not in request.session:
         request.session["flash_messages"] = []
@@ -100,14 +102,14 @@ def get_flashed_messages(request: Request):
 templates.env.globals["get_flashed_messages"] = get_flashed_messages
 
 
-# --- ROUTE-OK ---
+# --- ROUTES ---
 
 @app.get("/toggle-mode")
 async def toggle_mode(request: Request):
     config = load_config()
     config["mode"] = "edit" if config.get("mode") == "inventory" else "inventory"
     save_config(config)
-    flash(request, f"Mód váltva: {config['mode'].upper()}", "info")
+    flash(request, f"Mode switched: {config['mode'].upper()}", "info")
     return RedirectResponse(url="/", status_code=303)
 
 
@@ -195,7 +197,7 @@ async def upload_pasted_icon(item_id: int, request: Request):
         db.commit()
         db.close()
 
-        flash(request, f"Kép feltöltve: {filename}", "success")
+        flash(request, f"Image uploaded: {filename}", "success")
         return JSONResponse({"success": True, "filename": filename})
     except Exception as e:
         return JSONResponse({"success": False, "error": str(e)}, status_code=400)
@@ -224,14 +226,13 @@ async def add_item(
         )
         new_item_id = cursor.lastrowid
 
-        # Kép letöltése / nyilvántartásba vétele az külön modul segítségével
         final_image_name = img_mgr.process_and_register_image(image_url, new_item_id)
         if final_image_name:
             cursor.execute("UPDATE items SET image_url = ? WHERE id = ?", (final_image_name, new_item_id))
 
         db.commit()
         db.close()
-        flash(request, f"'{name_clean}' hozzáadva.", "success")
+        flash(request, f"'{name_clean}' added.", "success")
         
     return RedirectResponse(url=request.headers.get("referer", "/"), status_code=303)
 
@@ -263,7 +264,7 @@ async def edit_item(
         )
         db.commit()
         db.close()
-        flash(request, f"'{name_clean}' frissítve.", "success")
+        flash(request, f"'{name_clean}' updated.", "success")
         
     return RedirectResponse(url=request.headers.get("referer", "/"), status_code=303)
 
@@ -274,7 +275,7 @@ async def delete_item(request: Request, item_id: int):
     db.execute("DELETE FROM items WHERE id = ?", (item_id,))
     db.commit()
     db.close()
-    flash(request, "Elem törölve.", "success")
+    flash(request, "Item deleted.", "success")
     return RedirectResponse(url=request.headers.get("referer", "/"), status_code=303)
 
 
@@ -282,18 +283,149 @@ async def delete_item(request: Request, item_id: int):
 async def manage_containers(request: Request):
     config = load_config()
     db = db_module.get_db()
+    
     containers = db.execute("SELECT * FROM containers ORDER BY type_code ASC, main_num ASC, sub_num ASC").fetchall()
+    
+    item_counts_rows = db.execute("SELECT container_id, COUNT(*) as cnt FROM items GROUP BY container_id").fetchall()
+    item_counts = {r['container_id']: r['cnt'] for r in item_counts_rows}
+    
+    type_names = {
+        "CB": "Cardboard Box",
+        "DW": "Drawer Unit",
+        "SE": "Shelf / Cabinet",
+        "PB": "Plastic Box",
+        "OT": "Other Container"
+    }
+    
+    tree = {}
+    for c in containers:
+        tc = c['type_code']
+        main_n = c['main_num']
+        
+        if tc not in tree:
+            tree[tc] = {
+                "type_name": type_names.get(tc, tc),
+                "mains": {}
+            }
+            
+        if main_n not in tree[tc]["mains"]:
+            img_path = f"assets/storage/{c['id']}.png"
+            tree[tc]["mains"][main_n] = {
+                "main_id": f"{tc}{main_n}",
+                "has_image": os.path.exists(img_path),
+                "sub_containers": []
+            }
+            
+        if c['sub_num'] is not None:
+            tree[tc]["mains"][main_n]["sub_containers"].append({
+                "id": c['id'],
+                "sub_num": c['sub_num'],
+                "description": c['description']
+            })
+
     db.close()
-    return templates.TemplateResponse(request=request, name="containers.html", context={"containers": containers, "mode": config.get("mode")})
+    
+    return templates.TemplateResponse(
+        request=request, 
+        name="containers.html", 
+        context={
+            "tree": tree,
+            "item_counts": item_counts,
+            "mode": config.get("mode")
+        }
+    )
+
+
+@app.post("/add-container")
+async def add_container(
+    request: Request,
+    type_code: str = Form(...),
+    main_num: int = Form(...),
+    sub_num: Optional[int] = Form(None),
+    description: str = Form(""),
+    redirect_to: str = Form("containers")
+):
+    container_id = f"{type_code}{main_num}" + (f"-{sub_num}" if sub_num else "")
+    db = db_module.get_db()
+    try:
+        db.execute(
+            "INSERT INTO containers (id, type_code, main_num, sub_num, description) VALUES (?, ?, ?, ?, ?)",
+            (container_id, type_code, main_num, sub_num, description.strip())
+        )
+        db.commit()
+        flash(request, f"Container '{container_id}' created.", "success")
+    except Exception as e:
+        flash(request, f"Error adding container: {e}", "danger")
+    finally:
+        db.close()
+        
+    return RedirectResponse(url=f"/{redirect_to}", status_code=303)
 
 
 @app.get("/categories", response_class=HTMLResponse)
 async def manage_categories(request: Request):
     config = load_config()
     db = db_module.get_db()
+    
     mains = db.execute("SELECT * FROM categories WHERE parent_id IS NULL ORDER BY name ASC").fetchall()
+    
+    category_tree = []
+    for m in mains:
+        subs = db.execute("""
+            SELECT c.*, COUNT(i.id) as item_count 
+            FROM categories c 
+            LEFT JOIN items i ON c.id = i.category_id 
+            WHERE c.parent_id = ? 
+            GROUP BY c.id 
+            ORDER BY c.name ASC
+        """, (m['id'],)).fetchall()
+        
+        category_tree.append({
+            "id": m['id'],
+            "name": m['name'],
+            "subs": subs
+        })
+        
     db.close()
-    return templates.TemplateResponse(request=request, name="categories.html", context={"mains": mains, "mode": config.get("mode")})
+    
+    return templates.TemplateResponse(
+        request=request, 
+        name="categories.html", 
+        context={
+            "mains": mains,
+            "category_tree": category_tree,
+            "mode": config.get("mode")
+        }
+    )
+
+
+@app.post("/add-category")
+async def add_category(
+    request: Request,
+    name: str = Form(...),
+    parent_id: Optional[str] = Form(None)
+):
+    name_clean = name.strip()
+    p_id = int(parent_id) if parent_id and parent_id.isdigit() else None
+    
+    if name_clean:
+        db = db_module.get_db()
+        db.execute("INSERT INTO categories (name, parent_id) VALUES (?, ?)", (name_clean, p_id))
+        db.commit()
+        db.close()
+        flash(request, f"Category '{name_clean}' created.", "success")
+        
+    return RedirectResponse(url="/categories", status_code=303)
+
+
+@app.post("/delete-category/{cat_id}")
+async def delete_category(request: Request, cat_id: int):
+    db = db_module.get_db()
+    db.execute("DELETE FROM categories WHERE id = ?", (cat_id,))
+    db.commit()
+    db.close()
+    flash(request, "Category deleted.", "success")
+    return RedirectResponse(url="/categories", status_code=303)
 
 
 @app.get("/backup")
@@ -308,6 +440,13 @@ async def download_backup(request: Request):
     if db_path and os.path.exists(db_path):
         return FileResponse(path=db_path, filename="amazonas_storage_backup.db", media_type="application/x-sqlite3")
     return RedirectResponse(url="/", status_code=303)
+
+
+@app.get("/sync-images")
+async def trigger_image_sync(request: Request):
+    threading.Thread(target=img_mgr.sync_all_db_images, daemon=True).start()
+    flash(request, "Background image sync started!", "info")
+    return RedirectResponse(url=request.headers.get("referer", "/"), status_code=303)
 
 
 if __name__ == "__main__":
