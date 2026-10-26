@@ -13,15 +13,17 @@
         a { color: #00adb5; text-decoration: none; }
         .add-box { background: #1e1e1e; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid #333; }
         .type-group { background: #1a1a1a; margin-bottom: 15px; padding: 15px; border-radius: 8px; border: 1px solid #333; }
-        .main-box { background: #252525; margin: 10px 0; padding: 10px; border-radius: 6px; }
-        .sub-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-        .sub-badge { background: #333; padding: 6px 10px; border-radius: 4px; border: 1px solid #444; font-size: 0.9em; }
-        input, select, button { background: #252525; color: #eee; border: 1px solid #444; padding: 10px; border-radius: 4px; font-size: 0.95rem; }
-        form { display: flex; flex-direction: column; gap: 8px; }
-        @media(min-width: 600px) {
-            form { flex-direction: row; flex-wrap: wrap; }
-            input, select { flex: 1; min-width: 150px; }
-        }
+        .main-box { background: #252525; margin: 10px 0; padding: 12px; border-radius: 6px; border: 1px solid #333; }
+        input, select, button { background: #252525; color: #eee; border: 1px solid #444; padding: 8px; border-radius: 4px; font-size: 0.9rem; }
+        form.inline-form { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; width: 100%; margin-bottom: 8px; }
+        .btn-action { background: #00adb5; color: #121212; border: none; font-weight: bold; cursor: pointer; padding: 6px 12px; border-radius: 4px; }
+        .btn-danger { background: #ff2e63; color: white; border: none; cursor: pointer; padding: 6px 12px; border-radius: 4px; }
+        
+        details { background: #181818; border: 1px solid #333; padding: 8px; border-radius: 4px; margin-top: 8px; }
+        summary { cursor: pointer; color: #00adb5; font-weight: bold; }
+        .item-list { margin-top: 8px; padding-left: 0; list-style: none; }
+        .item-list li { background: #222; padding: 6px 10px; margin-bottom: 4px; border-radius: 4px; display: flex; justify-content: space-between; font-size: 0.9em; }
+        .sub-container-box { background: #1e1e1e; border-left: 3px solid #00adb5; padding: 8px; margin-top: 8px; border-radius: 0 4px 4px 0; }
     </style>
 </head>
 <body>
@@ -32,7 +34,7 @@
 
     <div class="add-box">
         <h3>Add New Container</h3>
-        <form method="post" action="/add-container">
+        <form method="post" action="/add-container" class="inline-form">
             <input type="hidden" name="redirect_to" value="containers">
             <select name="type_code" required>
                 <option value="CB">CB - Cardboard Box</option>
@@ -41,10 +43,10 @@
                 <option value="PB">PB - Plastic Box</option>
                 <option value="OT">OT - Other Container</option>
             </select>
-            <input type="number" name="main_num" placeholder="Main Number (e.g. 1)" required>
-            <input type="number" name="sub_num" placeholder="Sub Number (optional, e.g. 2)">
-            <input type="text" name="description" placeholder="Description">
-            <button type="submit" style="background: #00adb5; color: #121212; font-weight: bold; min-height: 40px;">Add Container</button>
+            <input type="number" name="main_num" placeholder="Main No. *" style="width: 90px;" required>
+            <input type="number" name="sub_num" placeholder="Sub No." style="width: 90px;">
+            <input type="text" name="description" placeholder="Description" style="flex: 1; min-width: 150px;">
+            <button type="submit" class="btn-action">Create</button>
         </form>
     </div>
 
@@ -54,23 +56,86 @@
             
             {% for main_num, main_data in type_data.mains.items() %}
                 <div class="main-box">
-                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 5px;">
-                        <strong>Main Container: {{ main_data.main_id }}</strong>
-                        {% if main_data.has_image %}
-                            <span style="color: #4caf50; font-size: 0.85em;">Image Available</span>
-                        {% endif %}
-                    </div>
+                    {% set main_c = main_data.main_container %}
+                    {% if mode == 'edit' %}
+                        <!-- EDIT FORM FOR MAIN CONTAINER -->
+                        <form method="post" action="/edit-container/{{ main_c.id }}" class="inline-form">
+                            <strong>ID: {{ main_c.id }}</strong>
+                            <select name="type_code" style="width: 80px;">
+                                <option value="CB" {% if main_c.type_code == 'CB' %}selected{% endif %}>CB</option>
+                                <option value="DW" {% if main_c.type_code == 'DW' %}selected{% endif %}>DW</option>
+                                <option value="SE" {% if main_c.type_code == 'SE' %}selected{% endif %}>SE</option>
+                                <option value="PB" {% if main_c.type_code == 'PB' %}selected{% endif %}>PB</option>
+                                <option value="OT" {% if main_c.type_code == 'OT' %}selected{% endif %}>OT</option>
+                            </select>
+                            <input type="number" name="main_num" value="{{ main_c.main_num }}" style="width: 70px;" required>
+                            <input type="text" name="description" value="{{ main_c.description or '' }}" placeholder="Description" style="flex: 1;">
+                            <button type="submit" class="btn-action">Save</button>
+                            <button type="submit" formaction="/delete-container/{{ main_c.id }}" class="btn-danger" onclick="return confirm('Delete this container?')">Delete</button>
+                        </form>
+                    {% else %}
+                        <!-- VIEW MODE FOR MAIN CONTAINER -->
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <strong>Main Container: {{ main_c.id }}</strong>
+                            <span style="color: #aaa; font-size: 0.9em;">{{ main_c.description or 'No description' }}</span>
+                        </div>
+                    {% endif %}
 
+                    <!-- ITEMS INSIDE MAIN CONTAINER -->
+                    <details>
+                        <summary>Contents ({{ container_items.get(main_c.id, [])|length }} items)</summary>
+                        <ul class="item-list">
+                            {% for item in container_items.get(main_c.id, []) %}
+                                <li>
+                                    <span>{{ item.name }} <small style="color: #aaa;">({{ item.description or '' }})</small></span>
+                                    <strong style="color: #00adb5;">{{ item.quantity }} pcs</strong>
+                                </li>
+                            {% else %}
+                                <li style="color: #777;">No items in this container.</li>
+                            {% endfor %}
+                        </ul>
+                    </details>
+
+                    <!-- SUB CONTAINERS -->
                     {% if main_data.sub_containers %}
-                        <div class="sub-grid">
+                        <div style="margin-top: 10px;">
                             {% for sub in main_data.sub_containers %}
-                                <div class="sub-badge">
-                                    {{ sub.id }} 
-                                    <span style="color: #00adb5;">({{ item_counts.get(sub.id, 0) }} items)</span>
+                                <div class="sub-container-box">
+                                    {% if mode == 'edit' %}
+                                        <form method="post" action="/edit-container/{{ sub.id }}" class="inline-form" style="margin: 0;">
+                                            <span style="min-width: 60px;"><strong>Sub: {{ sub.id }}</strong></span>
+                                            <input type="hidden" name="type_code" value="{{ sub.type_code }}">
+                                            <input type="hidden" name="main_num" value="{{ sub.main_num }}">
+                                            <input type="number" name="sub_num" value="{{ sub.sub_num }}" style="width: 70px;" required>
+                                            <input type="text" name="description" value="{{ sub.description or '' }}" placeholder="Description" style="flex: 1;">
+                                            <button type="submit" class="btn-action">Save</button>
+                                            <button type="submit" formaction="/delete-container/{{ sub.id }}" class="btn-danger" onclick="return confirm('Delete sub-container?')">Delete</button>
+                                        </form>
+                                    {% else %}
+                                        <div style="display: flex; justify-content: space-between;">
+                                            <strong>Sub-Container: {{ sub.id }}</strong>
+                                            <span style="color: #aaa; font-size: 0.85em;">{{ sub.description or 'No description' }}</span>
+                                        </div>
+                                    {% endif %}
+
+                                    <details style="margin-top: 4px;">
+                                        <summary style="font-size: 0.85em;">Contents ({{ container_items.get(sub.id, [])|length }} items)</summary>
+                                        <ul class="item-list">
+                                            {% for item in container_items.get(sub.id, []) %}
+                                                <li>
+                                                    <span>{{ item.name }} <small style="color: #aaa;">({{ item.description or '' }})</small></span>
+                                                    <strong style="color: #00adb5;">{{ item.quantity }} pcs</strong>
+                                                </li>
+                                            {% else %}
+                                                <li style="color: #777;">No items.</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </details>
                                 </div>
                             {% endfor %}
                         </div>
                     {% endif %}
+
                 </div>
             {% endfor %}
         </div>

@@ -286,9 +286,15 @@ async def manage_containers(request: Request):
     
     containers = db.execute("SELECT * FROM containers ORDER BY type_code ASC, main_num ASC, sub_num ASC").fetchall()
     
-    item_counts_rows = db.execute("SELECT container_id, COUNT(*) as cnt FROM items GROUP BY container_id").fetchall()
-    item_counts = {r['container_id']: r['cnt'] for r in item_counts_rows}
-    
+    # Elemek lekérése tárolónként csoportosítva
+    all_items = db.execute("SELECT id, name, description, quantity, container_id FROM items").fetchall()
+    container_items = {}
+    for item in all_items:
+        c_id = item['container_id']
+        if c_id not in container_items:
+            container_items[c_id] = []
+        container_items[c_id].append(item)
+
     type_names = {
         "CB": "Cardboard Box",
         "DW": "Drawer Unit",
@@ -309,19 +315,15 @@ async def manage_containers(request: Request):
             }
             
         if main_n not in tree[tc]["mains"]:
-            img_path = f"assets/storage/{c['id']}.png"
             tree[tc]["mains"][main_n] = {
-                "main_id": f"{tc}{main_n}",
-                "has_image": os.path.exists(img_path),
+                "main_container": c if c['sub_num'] is None else {"id": f"{tc}{main_n}", "type_code": tc, "main_num": main_n, "description": ""},
                 "sub_containers": []
             }
-            
-        if c['sub_num'] is not None:
-            tree[tc]["mains"][main_n]["sub_containers"].append({
-                "id": c['id'],
-                "sub_num": c['sub_num'],
-                "description": c['description']
-            })
+        
+        if c['sub_num'] is None:
+            tree[tc]["mains"][main_n]["main_container"] = c
+        else:
+            tree[tc]["mains"][main_n]["sub_containers"].append(c)
 
     db.close()
     
@@ -330,10 +332,61 @@ async def manage_containers(request: Request):
         name="containers.html", 
         context={
             "tree": tree,
-            "item_counts": item_counts,
+            "container_items": container_items,
             "mode": config.get("mode")
         }
     )
+
+@app.post("/edit-container/{container_id}")
+async def edit_container(
+    request: Request,
+    container_id: str,
+    type_code: str = Form(...),
+    main_num: int = Form(...),
+    sub_num: Optional[int] = Form(None),
+    description: str = Form("")
+):
+    # Generáljuk az új azonosítót (pl. PB5-1 -> PB5-7)
+    new_id = f"{type_code}{main_num}" + (f"-{sub_num}" if sub_num else "")
+    db = db_module.get_db()
+    
+    try:
+        # 1. Ha megváltozott az azonosító, először a benne lévő alkatrészeket mozgatjuk az új ID alá
+        if new_id != container_id:
+            db.execute("UPDATE items SET container_id = ? WHERE container_id = ?", (new_id, container_id))
+        
+        # 2. Utána frissítjük maga a konténer adatait
+        db.execute(
+            "UPDATE containers SET id = ?, type_code = ?, main_num = ?, sub_num = ?, description = ? WHERE id = ?",
+            (new_id, type_code, main_num, sub_num, description.strip(), container_id)
+        )
+
+        db.commit()
+        flash(request, f"Konténer átnevezve: '{container_id}' ➔ '{new_id}' (A tartalom megmaradt)", "success")
+    except Exception as e:
+        db.rollback()
+        flash(request, f"Hiba a konténer módosításakor: {e}", "danger")
+    finally:
+        db.close()
+
+    return RedirectResponse(url="/containers", status_code=303)
+
+
+@app.post("/delete-container/{container_id}")
+async def delete_container(request: Request, container_id: str):
+    db = db_module.get_db()
+    
+    # Ellenőrizzük, hogy van-e benne alkatrész
+    item_count = db.execute("SELECT COUNT(*) FROM items WHERE container_id = ?", (container_id,)).fetchone()[0]
+    if item_count > 0:
+        flash(request, f"Cannot delete container '{container_id}': it contains {item_count} items!", "danger")
+    else:
+        db.execute("DELETE FROM containers WHERE id = ?", (container_id,))
+        db.commit()
+        flash(request, f"Container '{container_id}' deleted.", "success")
+        
+    db.close()
+    return RedirectResponse(url="/containers", status_code=303)
 
 
 @app.post("/add-container")
